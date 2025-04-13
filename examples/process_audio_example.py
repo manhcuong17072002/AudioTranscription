@@ -7,7 +7,7 @@ from typing import List, Dict
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import các module đã tạo
-from sources.core.audio_understanding import transcript_audios, transcript_split_audio
+from sources.core.stt_llm import transcript_audios, transcript_split_audio
 from sources.core.split_audio import process_audio_file
 
 def process_single_audio(audio_path: str, output_json: str = None) -> List[Dict[str, str]]:

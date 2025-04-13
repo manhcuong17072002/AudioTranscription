@@ -8,7 +8,7 @@ from pydub.silence import split_on_silence, detect_silence
 
 def detect_silence_intervals(
     audio_file: Union[str, BytesIO],
-    min_silence_len: int = 500,  # ms
+    min_silence_len: int = 400,  # ms
     silence_thresh: int = -40,   # dB
     keep_silence: int = 150      # ms
 ) -> List[Tuple[int, int]]:
@@ -43,11 +43,11 @@ def detect_silence_intervals(
 
 def split_audio_on_silence(
     audio_file: Union[str, BytesIO],
-    min_silence_len: int = 500,  # ms
+    min_silence_len: int = 400,  # ms
     silence_thresh: int = -40,   # dB
     keep_silence: int = 150,     # ms
     min_segment_length: int = 2000,  # ms
-    max_segment_length: Optional[int] = 10  # ms, None = không giới hạn
+    max_segment_length: Optional[int] = 10000  # ms, None = không giới hạn
 ) -> List[BytesIO]:
     """
     Cắt file audio thành nhiều đoạn dựa trên khoảng lặng.
@@ -151,14 +151,15 @@ def save_audio_chunks(chunks: List[BytesIO], output_dir: str, prefix: str = "chu
 
 def process_audio_file(
     audio_file: Union[str, BytesIO],
-    min_silence_len: int = 500,  # ms
+    min_silence_len: int = 400,  # ms
     silence_thresh: int = -40,   # dB
-    keep_silence: int = 100,     # ms
+    keep_silence: int = 150,     # ms
     min_segment_length: int = 2000,  # ms
-    max_segment_length: Optional[int] = 30000,  # ms, ~30s
+    max_segment_length: Optional[int] = 10000,  # ms, ~10s
     save_to_disk: bool = False,
     output_dir: Optional[str] = None,
-    file_prefix: str = "segment"
+    file_prefix: str = "segment", 
+    **kwargs: Optional[dict]
 ) -> Union[List[BytesIO], List[str]]:
     """
     Xử lý file audio: phát hiện và cắt theo khoảng lặng.
@@ -221,3 +222,24 @@ def process_audio_file(
         return save_audio_chunks(chunks, output_dir, file_prefix)
     
     return chunks
+
+
+if __name__ == "__main__":
+    # Ví dụ sử dụng
+    audio_path = "samples/vtv.mp3"
+    output_dir = "output_segments"
+    
+    # Cắt audio và lưu vào ổ đĩa
+    segments = process_audio_file(
+        audio_path,
+        min_silence_len=400,
+        silence_thresh=-40,
+        keep_silence=150,
+        min_segment_length=2000,
+        max_segment_length=30000,
+        save_to_disk=True,
+        output_dir=output_dir,
+        file_prefix="segment"
+    )
+    
+    print(f"Đã cắt thành {len(segments)} đoạn audio và lưu vào {output_dir}")
