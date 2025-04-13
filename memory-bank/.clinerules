@@ -1,0 +1,55 @@
+# Quy tắc và chỉ dẫn cho dự án Audio Transcription
+
+## Quy ước đặt tên
+1. **Files**: Sử dụng snake_case cho tên file (ví dụ: audio_understanding.py, split_audio.py)
+2. **Functions**: Sử dụng snake_case cho tên hàm (ví dụ: transcript_audios())
+3. **Variables**: Sử dụng snake_case cho biến và hằng số
+4. **Classes**: Nếu sử dụng classes, dùng PascalCase (chưa có ví dụ trong dự án hiện tại)
+
+## Cấu trúc file
+- Imports được đặt ở đầu file, theo thứ tự: thư viện chuẩn, thư viện bên thứ ba, modules nội bộ
+- Docstrings và comments sử dụng tiếng Việt
+- README viết bằng tiếng Việt
+
+## Nguyên tắc mã nguồn
+1. **Mô-đun hóa**: Tách chức năng thành các modules riêng biệt, dễ quản lý
+2. **Xử lý lỗi**: Bắt và xử lý các trường hợp lỗi, đặc biệt là khi gọi API
+3. **Cấu hình linh hoạt**: Thiết kế để dễ dàng thay đổi tham số và cấu hình
+
+## Cách xử lý API key
+1. API keys được lưu trữ trong api_key.py (không check in lên git)
+2. Đã thiết lập cơ chế thay đổi API key khi bị rate limit
+3. Trong tương lai sẽ có hệ thống quản lý API key của người dùng
+
+## Audio processing
+1. File audio nên có định dạng .wav cho tương thích tốt nhất
+2. Đối với file dài, sử dụng phương pháp cắt theo khoảng lặng
+3. Dự án hiện có các file audio mẫu: 3.6.wav, 10.1.wav, NHLy.wav, NDSon.wav
+
+## Tương tác với Gemini API
+1. Sử dụng model "gemini-2.0-flash" cho transcription
+2. Prompt chuẩn bị sẵn trong audio_understanding.py
+3. Kết quả trả về dạng JSON với transcript và voice description
+
+## Workflow phát triển
+1. Thử nghiệm trong Jupyter Notebook (test.ipynb)
+2. Triển khai thành modules Python
+3. Tích hợp các modules lại với nhau
+4. Kiểm thử với các file mẫu
+
+## Học hỏi và ghi chú
+1. Gemini API có rate limit cần lưu ý
+2. Prompt engineering rất quan trọng để có kết quả chính xác
+3. pydub là thư viện hiệu quả để xử lý file audio trong Python
+4. python-magic giúp xác định MIME type của file
+
+## Cấu trúc Memory Bank
+Duy trì cấu trúc Memory Bank với 6 file cốt lõi:
+1. projectbrief.md: Nền tảng dự án
+2. productContext.md: Bối cảnh sản phẩm
+3. systemPatterns.md: Kiến trúc và mẫu thiết kế
+4. techContext.md: Công nghệ sử dụng
+5. activeContext.md: Trọng tâm hiện tại
+6. progress.md: Tiến độ và kế hoạch
+
+Cập nhật Memory Bank khi có thay đổi lớn về thiết kế hoặc chức năng.
