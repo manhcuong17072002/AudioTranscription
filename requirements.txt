@@ -1,3 +1,4 @@
 google-genai
 pydub
 python-magic
+stable-ts

@@ -22,18 +22,18 @@ client = genai.Client(api_key=API_KEYS[current_key_index])
 
 prompt = """
 Please transcribe this audio file into text following these rules:
-Accurately transcribe the audio without adding or omitting any words. If parts of the audio are unclear, rely on contextual clues to infer the missing words.
-
-Ensure the entire transcript is in plain text format. Do not use any numerical formatting or special characters.3. The output must follow the structure below:
+1. Transcribe exactly what the speaker says, without adding or omitting any words.
+2. Use only plain letters; do not include numbers, special characters, or any formatting.
+3. Return the output in the following JSON structure:
 ```json 
 [
     {
-        "Transcript": "The plain text transcription that accurately reflects the content of the audio.",
+        "Transcript": "The plain text transcription that accurately reflects the content of the audio. Each item should be one sentence, transcribed exactly as spoken in the audio.",
         "Voice Description": "Provide a detailed description of the speaker's voice characteristics, including gender, tone, emotion, pronunciation, and speaking style. For example: A female speaker delivers a slightly expressive and animated speech with a very high-pitched voice, sounding very close-up in the recording. Almost no noise is present in the background, contributing to a clear and crisp listening experience. Each voice description must be distinct and not repeated across different entries."
     }
 ]
 ```
-4. Do not add any information outside of the format above.
+4. Do not add any explanations, comments, or any information outside of the format above.
 """
 
 

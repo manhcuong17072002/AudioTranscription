@@ -21,7 +21,7 @@ wheels/
 *.egg
 
 # API keys and sensitive information
-api_key.py
+# api_key.py
 .env
 *.key
 
@@ -55,4 +55,5 @@ Thumbs.db
 # *.mp3
 # *.ogg
 
-samples/
+# samples/
+*.ipynb
