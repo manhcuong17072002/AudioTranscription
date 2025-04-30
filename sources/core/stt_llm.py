@@ -9,7 +9,6 @@ from typing import Dict, List, Union, Optional
 from api_key import *
 from google import genai
 from magic import Magic
-from .split_audio import split_audio_on_silence
 
 magic = Magic()
 
@@ -36,7 +35,6 @@ Please transcribe this audio file into text following these rules:
 4. Do not add any explanations, comments, or any information outside of the format above.
 """
 
-
 def change_api_key():
     """
     Thay đổi API key khi bị rate limit.
@@ -46,7 +44,6 @@ def change_api_key():
     current_key_index = (current_key_index + 1) % len(API_KEYS)
     client = genai.Client(api_key=API_KEYS[current_key_index])
     print(f"Đã chuyển sang API key #{current_key_index + 1}")
-
 
 def parse_response(response_text: str) -> List[Dict[str, str]]:
     """
@@ -77,7 +74,6 @@ def parse_response(response_text: str) -> List[Dict[str, str]]:
         print(f"Kết quả trả về: {response_text}")
         raise ValueError(f"Không thể phân tích kết quả thành JSON: {e}")
 
-
 def generate_random_string(length: int = 20) -> str:
     """
     Tạo một chuỗi ngẫu nhiên với độ dài nhất định.
@@ -88,112 +84,59 @@ def generate_random_string(length: int = 20) -> str:
     Returns:
         str: Chuỗi ngẫu nhiên
     """
-
     return "".join(random.choices(string.ascii_letters + string.digits, k=length))
 
-
-def transcript_audios(
-    files: Union[str, List[str], BytesIO, List[BytesIO]],
-    batch_size: Optional[int] = 10,
+def transcript_audio(
+    file: Union[str, BytesIO],
     max_retries: int = 3,
-    split_audio: bool = False,
-    **kwargs,
+    model:str = "gemini-2.0-flash"
 ) -> List[Dict[str, str]]:
     """
     Phiên âm nội dung của file audio sử dụng Google Gemini API.
 
     Args:
-        files: Đường dẫn đến file audio hoặc BytesIO object, có thể là một đối tượng đơn lẻ hoặc danh sách
-        batch_size: Số lượng file tối đa xử lý trong một lần gọi API
-        max_retries: Số lần thử lại tối đa khi gặp lỗi rate limit
-        split_audio: Tự động cắt file audio dài thành các đoạn nhỏ
-        kwargs: Các tham số bổ sung cho việc cắt file audio
-
-    Returns:
-        List[Dict[str, str]]: Danh sách các kết quả phiên âm dưới dạng JSON
-
-    Raises:
-        ValueError: Nếu loại file không được hỗ trợ
-        RuntimeError: Nếu không thể phiên âm sau số lần thử lại tối đa
-    """
-
-    # Chuẩn bị danh sách file
-    if split_audio:
-        if not isinstance(files, (str, BytesIO)):
-            raise ValueError("Chỉ hỗ trợ cắt file audio đơn lẻ")
-
-        files = split_audio_on_silence(
-            files,
-            **kwargs,
-        )
-
-    else:
-        if isinstance(files, str):
-            # If a single file is provided, convert it to a list
-            files = [files]
-        elif isinstance(files, BytesIO):
-            # If a single BytesIO object is provided, convert it to a list
-            files = [files]
-
-    # Xử lý theo batch_size
-    all_results = []
-    
-    # Chia files thành các batch
-    for i in range(0, len(files), batch_size):
-        batch_files = files[i:i + batch_size]
-        batch_results = process_batch(batch_files, max_retries)
-        all_results.extend(batch_results)
-    
-    return all_results
-
-def process_batch(files: List[Union[str, BytesIO]], max_retries: int) -> List[Dict[str, str]]:
-    """
-    Xử lý một batch các file âm thanh.
-
-    Args:
-        files: Danh sách các file âm thanh cần xử lý
+        file: Đường dẫn đến file audio hoặc BytesIO object
         max_retries: Số lần thử lại tối đa khi gặp lỗi rate limit
 
     Returns:
-        List[Dict[str, str]]: Kết quả phiên âm cho batch này
-        
+        List[Dict[str, str]]: Kết quả phiên âm dưới dạng JSON
+
     Raises:
         ValueError: Nếu loại file không được hỗ trợ
         RuntimeError: Nếu không thể phiên âm sau số lần thử lại tối đa
     """
     try:
+        # Khởi tạo danh sách để lưu file đã upload
         uploaded_files = []
-        filenames = []
+        filename = ""
 
-        # Upload các file trong batch
-        for file in files:
-            if isinstance(file, str):
-                filenames.append(os.path.basename(file))
-                config = {}
+        # Xử lý file input
+        if isinstance(file, str):
+            filename = os.path.basename(file)
+            config = {}
+        elif isinstance(file, BytesIO):
+            # Xác định MIME type cho BytesIO objects
+            mime_type = magic.from_buffer(file.getvalue(), mime=True)
+            config = {"mime_type": mime_type}
 
-            elif isinstance(file, BytesIO):
-                # Determine MIME type for BytesIO objects
-                mime_type = magic.from_buffer(file.getvalue(), mime=True)
-                config = {"mime_type": mime_type}
-
-                # Xử lý tên file cho BytesIO
-                if hasattr(file, "name") and file.name:
-                    filenames.append(os.path.basename(file.name))
-                else:
-                    filenames.append(f"audio_{generate_random_string(8)}.wav")
+            # Xử lý tên file cho BytesIO
+            if hasattr(file, "name") and file.name:
+                filename = os.path.basename(file.name)
             else:
-                raise ValueError("Unsupported file type")
+                filename = f"audio_{generate_random_string()}.wav"
+        else:
+            raise ValueError("Định dạng file không được hỗ trợ")
 
-            uploaded_file = client.files.upload(file=file, config=config)
-            uploaded_files.append(uploaded_file)
-
-        print(f"Đã upload {len(uploaded_files)} files trong batch")
+        # Upload file
+        uploaded_file = client.files.upload(file=file, config=config)
+        uploaded_files.append(uploaded_file)
 
         # Thử lại nếu gặp lỗi rate limit
         for attempt in range(max_retries):
             try:
+                # Gọi API Gemini
                 response = client.models.generate_content(
-                    model="gemini-2.0-flash",
+                    model=model,
                     contents=[prompt, uploaded_files],
                 )
 
@@ -203,13 +146,7 @@ def process_batch(files: List[Union[str, BytesIO]], max_retries: int) -> List[Di
                 # Phân tích kết quả JSON
                 results = parse_response(response_text)
 
-                # Thêm tên file vào kết quả
-                for i, result in enumerate(results):
-                    file_index = min(i, len(filenames) - 1) if filenames else 0
-                    if not "Filename" in result and filenames:
-                        result["Filename"] = filenames[file_index]
-
-                print(f"Phiên âm thành công batch {len(results)} kết quả")
+                print(f"Phiên âm thành công file {filename}: {len(results)} kết quả")
                 return results
 
             except Exception as e:
@@ -217,9 +154,7 @@ def process_batch(files: List[Union[str, BytesIO]], max_retries: int) -> List[Di
 
                 # Kiểm tra nếu là lỗi rate limit
                 if "rate limit" in error_message or "quota" in error_message:
-                    print(
-                        f"Gặp lỗi rate limit, đang thử lại ({attempt+1}/{max_retries})..."
-                    )
+                    print(f"Gặp lỗi rate limit, đang thử lại ({attempt+1}/{max_retries})...")
                     change_api_key()
                     time.sleep(1)  # Chờ 1 giây trước khi thử lại
                 else:
