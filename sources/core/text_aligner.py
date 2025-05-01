@@ -2,7 +2,6 @@ import os
 import random
 import string
 from io import BytesIO
-from tempfile import NamedTemporaryFile
 from typing import Dict, List, Optional, Tuple, Union
 
 import stable_whisper

@@ -1,20 +1,26 @@
 import json
+import mimetypes
 import os
 import random
 import string
 import time
 from io import BytesIO
-from typing import Dict, List, Union, Optional
+from typing import Dict, List, Optional, Union
 
-from api_key import *
 from google import genai
 from magic import Magic
 
-magic = Magic()
+from .api_key import *
+
+# Khởi tạo với mime=True để lấy MIME type thay vì mô tả
+magic = Magic(mime=True)
+
+# Đảm bảo mimetypes được khởi tạo
+mimetypes.init()
 
 # Danh sách API key
-API_KEYS = [API_KEY1, API_KEY2, API_KEY3, API_KEY4]
-current_key_index = 1  # Bắt đầu với API_KEY2
+API_KEYS = [API_KEY2]
+current_key_index = 0  # Bắt đầu với API_KEY2
 
 # Khởi tạo client với API key mặc định
 client = genai.Client(api_key=API_KEYS[current_key_index])
@@ -27,13 +33,14 @@ Please transcribe this audio file into text following these rules:
 ```json 
 [
     {
-        "Transcript": "The plain text transcription that accurately reflects the content of the audio. Each item should be one sentence, transcribed exactly as spoken in the audio.",
-        "Voice Description": "Provide a detailed description of the speaker's voice characteristics, including gender, tone, emotion, pronunciation, and speaking style. For example: A female speaker delivers a slightly expressive and animated speech with a very high-pitched voice, sounding very close-up in the recording. Almost no noise is present in the background, contributing to a clear and crisp listening experience. Each voice description must be distinct and not repeated across different entries."
+        "text": "The plain text transcription that accurately reflects the content of the audio. Each item should be one sentence, transcribed exactly as spoken in the audio.",
+        "description": "Provide a detailed description of the speaker's voice characteristics, including gender, tone, emotion, pronunciation, and speaking style. For example: A female speaker delivers a slightly expressive and animated speech with a very high-pitched voice, sounding very close-up in the recording. Almost no noise is present in the background, contributing to a clear and crisp listening experience. Each voice description must be distinct and not repeated across different entries."
     }
 ]
 ```
 4. Do not add any explanations, comments, or any information outside of the format above.
 """
+
 
 def change_api_key():
     """
@@ -44,6 +51,7 @@ def change_api_key():
     current_key_index = (current_key_index + 1) % len(API_KEYS)
     client = genai.Client(api_key=API_KEYS[current_key_index])
     print(f"Đã chuyển sang API key #{current_key_index + 1}")
+
 
 def parse_response(response_text: str) -> List[Dict[str, str]]:
     """
@@ -74,6 +82,7 @@ def parse_response(response_text: str) -> List[Dict[str, str]]:
         print(f"Kết quả trả về: {response_text}")
         raise ValueError(f"Không thể phân tích kết quả thành JSON: {e}")
 
+
 def generate_random_string(length: int = 20) -> str:
     """
     Tạo một chuỗi ngẫu nhiên với độ dài nhất định.
@@ -86,17 +95,66 @@ def generate_random_string(length: int = 20) -> str:
     """
     return "".join(random.choices(string.ascii_letters + string.digits, k=length))
 
+
+def get_normalized_mime_type(file_data: bytes, filename: str) -> str:
+    """
+    Xác định MIME type chuẩn cho file audio.
+
+    Args:
+        file_data: Nội dung file dưới dạng bytes
+        filename: Tên file
+
+    Returns:
+        str: MIME type chuẩn
+    """
+    # Sử dụng python-magic để lấy MIME type từ nội dung file
+    magic_mime = magic.from_buffer(file_data)
+
+    # Sử dụng mimetypes để lấy MIME type từ tên file
+    filename_mime, _ = mimetypes.guess_type(filename)
+
+    print(f"MIME từ magic: {magic_mime}, MIME từ tên file: {filename_mime}")
+
+    # Ánh xạ MIME types phổ biến sang dạng chuẩn
+    mime_mapping = {
+        "audio/x-wav": "audio/wav",
+        "audio/x-mp3": "audio/mpeg",
+        "audio/mp3": "audio/mpeg",
+        "application/octet-stream": None,  # Sẽ dựa vào filename_mime
+    }
+
+    # Ưu tiên sử dụng magic_mime nếu nó là audio/*
+    if magic_mime and magic_mime.startswith("audio/"):
+        return mime_mapping.get(magic_mime, magic_mime)
+
+    # Nếu magic_mime không phải audio/*, thử dùng filename_mime
+    if filename_mime and filename_mime.startswith("audio/"):
+        return filename_mime
+
+    # Fallback: dựa vào phần mở rộng file
+    if filename.lower().endswith(".wav"):
+        return "audio/wav"
+    elif filename.lower().endswith((".mp3", ".mpeg")):
+        return "audio/mpeg"
+    elif filename.lower().endswith(".ogg"):
+        return "audio/ogg"
+    elif filename.lower().endswith(".flac"):
+        return "audio/flac"
+
+    # Nếu không xác định được, trả về magic_mime mặc định
+    return magic_mime
+
+
 def transcript_audio(
-    file: Union[str, BytesIO],
-    max_retries: int = 3,
-    model:str = "gemini-2.0-flash"
+    file: Union[str, BytesIO], max_retries: int = 3, model: str = "gemini-2.0-flash"
 ) -> List[Dict[str, str]]:
     """
     Phiên âm nội dung của file audio sử dụng Google Gemini API.
 
     Args:
         file: Đường dẫn đến file audio hoặc BytesIO object
-        max_retries: Số lần thử lại tối đa khi gặp lỗi rate limit
+        max_retries: Số lần thử lại tối đa khi gặp lỗi
+        model: Model AI sử dụng (mặc định: gemini-2.0-flash)
 
     Returns:
         List[Dict[str, str]]: Kết quả phiên âm dưới dạng JSON
@@ -105,39 +163,60 @@ def transcript_audio(
         ValueError: Nếu loại file không được hỗ trợ
         RuntimeError: Nếu không thể phiên âm sau số lần thử lại tối đa
     """
+    # Biến để theo dõi file đã upload
+    uploaded_file = None
+
     try:
-        # Khởi tạo danh sách để lưu file đã upload
-        uploaded_files = []
-        filename = ""
-
-        # Xử lý file input
+        # Xử lý file input và chuẩn bị config
         if isinstance(file, str):
+            with open(file, "rb") as f:
+                file_data = f.read()
             filename = os.path.basename(file)
-            config = {}
+            file_source = file  # Lưu đường dẫn gốc
         elif isinstance(file, BytesIO):
-            # Xác định MIME type cho BytesIO objects
-            mime_type = magic.from_buffer(file.getvalue(), mime=True)
-            config = {"mime_type": mime_type}
+            # Đảm bảo con trỏ BytesIO ở đầu file để đọc đầy đủ nội dung
+            if hasattr(file, "seek"):
+                file.seek(0)
+            file_data = file.getvalue()
 
-            # Xử lý tên file cho BytesIO
+            # Xác định tên file
             if hasattr(file, "name") and file.name:
                 filename = os.path.basename(file.name)
             else:
                 filename = f"audio_{generate_random_string()}.wav"
+
+            file_source = file  # Lưu BytesIO object gốc
         else:
             raise ValueError("Định dạng file không được hỗ trợ")
 
-        # Upload file
-        uploaded_file = client.files.upload(file=file, config=config)
-        uploaded_files.append(uploaded_file)
+        # Xác định MIME type chuẩn hóa
+        mime_type = get_normalized_mime_type(file_data, filename)
+        config = {"mime_type": mime_type}
+        print(f"Sử dụng MIME type: {mime_type} cho file {filename}")
 
-        # Thử lại nếu gặp lỗi rate limit
+        # Thử upload và xử lý với retry
         for attempt in range(max_retries):
             try:
+                # Xóa file đã upload từ lần trước nếu có
+                if uploaded_file:
+                    try:
+                        client.files.delete(name=uploaded_file.name)
+                        print(f"Đã xóa file tạm trước đó: {uploaded_file.name}")
+                    except Exception as e:
+                        print(f"Không thể xóa file tạm: {str(e)}")
+
+                # Reset file về đầu trước khi upload
+                if isinstance(file_source, BytesIO) and hasattr(file_source, "seek"):
+                    file_source.seek(0)
+
+                # Upload file
+                uploaded_file = client.files.upload(file=file_source, config=None)
+                print(f"Đã upload file {filename} với ID: {uploaded_file.name}")
+
                 # Gọi API Gemini
                 response = client.models.generate_content(
                     model=model,
-                    contents=[prompt, uploaded_files],
+                    contents=[prompt, uploaded_file],
                 )
 
                 # Lấy text từ response
@@ -152,24 +231,55 @@ def transcript_audio(
             except Exception as e:
                 error_message = str(e).lower()
 
-                # Kiểm tra nếu là lỗi rate limit
+                # Kiểm tra các loại lỗi khác nhau
                 if "rate limit" in error_message or "quota" in error_message:
-                    print(f"Gặp lỗi rate limit, đang thử lại ({attempt+1}/{max_retries})...")
+                    # Xử lý rate limit bằng cách đổi API key
+                    print(
+                        f"Gặp lỗi rate limit, đang thử lại ({attempt+1}/{max_retries})..."
+                    )
                     change_api_key()
                     time.sleep(1)  # Chờ 1 giây trước khi thử lại
+                elif (
+                    "overloaded" in error_message
+                    or "unavailable" in error_message
+                    or "busy" in error_message
+                ):
+                    # Xử lý model overloaded bằng cách chờ lâu hơn
+                    wait_time = min(
+                        30, 2**attempt + 1
+                    )  # Tăng thời gian chờ theo cấp số nhân, tối đa 30s
+                    print(
+                        f"Model đang quá tải, chờ {wait_time}s trước khi thử lại ({attempt+1}/{max_retries})..."
+                    )
+                    time.sleep(wait_time)
+                elif attempt < max_retries - 1:  # Nếu còn lần thử khác
+                    # Lỗi khác nhưng vẫn còn cơ hội thử lại
+                    wait_time = 2 * (attempt + 1)
+                    print(f"Lỗi khi gọi API: {e}. Thử lại sau {wait_time}s...")
+                    time.sleep(wait_time)
                 else:
-                    # Lỗi khác, không phải rate limit
+                    # Lỗi khác và đã hết lần thử
                     print(f"Lỗi khi gọi API: {e}")
                     raise
 
-        # Nếu đã thử tất cả API key mà vẫn không thành công
+        # Nếu đã thử tất cả các lần mà vẫn không thành công
         raise RuntimeError(f"Không thể phiên âm sau {max_retries} lần thử lại")
-    
+
     finally:
         # Xóa các file đã upload để giải phóng tài nguyên
         try:
+            # Xóa theo danh sách đã lưu
             for f in client.files.list():
-                print(f"Xóa file đã upload: {f.name}")
-                client.files.delete(name=f.name)
+                try:
+                    print(f"Xóa file đã upload: {f.name}")
+                    client.files.delete(name=f.name)
+                except:
+                    pass
+
+            # Xóa thêm các file khác có thể còn sót lại
+            for f in client.files.list():
+                if hasattr(f, "name"):
+                    print(f"Xóa file còn sót: {f.name}")
+                    client.files.delete(name=f.name)
         except Exception as e:
             print(f"Lỗi khi xóa files đã upload: {e}")
