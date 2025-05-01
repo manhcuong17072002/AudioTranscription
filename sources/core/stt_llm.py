@@ -210,7 +210,7 @@ def transcript_audio(
                     file_source.seek(0)
 
                 # Upload file
-                uploaded_file = client.files.upload(file=file_source, config=None)
+                uploaded_file = client.files.upload(file=file_source, config=config)
                 print(f"Đã upload file {filename} với ID: {uploaded_file.name}")
 
                 # Gọi API Gemini
