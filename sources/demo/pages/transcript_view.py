@@ -16,7 +16,6 @@ sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
 from sources.demo.utils.zip_utils import create_zip_from_audio_chunks
 
-
 def show_transcript_details(transcription_results: List[Dict]):
     """
     Hiển thị chi tiết kết quả phiên âm và phân đoạn.
@@ -44,13 +43,40 @@ def show_transcript_details(transcription_results: List[Dict]):
         })
     
     df = pd.DataFrame(table_data)
-    st.dataframe(df, use_container_width=True)
+    st.dataframe(df, use_container_width=True, hide_index = True)
     
-    # Hiển thị chi tiết từng đoạn
-    st.subheader("Chi tiết từng đoạn")
+    # Cài đặt phân trang
+    if 'page_number' not in st.session_state:
+        st.session_state['page_number'] = 0
+        
+    # Số lượng đoạn mỗi trang - cho phép người dùng điều chỉnh
+    items_per_page = st.sidebar.number_input(
+        "Số đoạn hiển thị mỗi trang:", 
+        min_value=5, 
+        max_value=20, 
+        value=10,
+        help="Điều chỉnh để hiển thị nhiều hoặc ít đoạn hơn trên mỗi trang. Số lượng nhỏ hơn sẽ tải nhanh hơn."
+    )
     
-    for i, result in enumerate(transcription_results):
-        with st.expander(f"Đoạn {i+1}: {result.get('text', '')[:50]}..."):
+    total_pages = (len(transcription_results) - 1) // items_per_page + 1
+    
+    # Đảm bảo trang hiện tại nằm trong phạm vi hợp lệ sau khi thay đổi items_per_page
+    if st.session_state['page_number'] >= total_pages:
+        st.session_state['page_number'] = total_pages - 1
+        
+    # Lấy các đoạn cho trang hiện tại
+    start_idx = st.session_state['page_number'] * items_per_page
+    end_idx = min(start_idx + items_per_page, len(transcription_results))
+    page_results = transcription_results[start_idx:end_idx]
+    
+    # Hiển thị thanh điều hướng
+    st.subheader(f"Chi tiết từng đoạn (Trang {st.session_state['page_number'] + 1}/{total_pages})")
+    st.caption(f"Hiển thị đoạn {start_idx+1}-{end_idx} trong tổng số {len(transcription_results)} đoạn")
+        
+    # Hiển thị chi tiết từng đoạn trong trang hiện tại
+    for i, result in enumerate(page_results, start=start_idx + 1):
+        print(result)
+        with st.expander(f"Đoạn {i}: {result.get('text', '')[:50]}..."):
             col1, col2 = st.columns(2)
             
             with col1:
@@ -59,14 +85,31 @@ def show_transcript_details(transcription_results: List[Dict]):
             with col2:
                 st.text_area("Đặc điểm giọng nói", result.get("description", ""), height=100)
             
-            # Hiển thị audio nếu có
+            # Phần hiển thị audio
+            st.subheader("Audio")
+            
+            # Hiển thị audio nếu có, ngược lại hiển thị thông báo
             if "audio" in result:
-                # Lưu audio vào buffer
                 audio_buffer = BytesIO()
                 result["audio"].export(audio_buffer, format="wav")
                 audio_buffer.seek(0)
                 
                 st.audio(audio_buffer, format="audio/wav")
+            else:
+                st.warning("Không có audio cho đoạn này")
+    
+    # Hiển thị thanh điều hướng ở dưới
+    col1, col2, col3 = st.columns([5, 5, 1])
+    with col1:
+        if st.button("◀️ Trước", key="prev_bottom") and st.session_state['page_number'] > 0:
+            st.session_state['page_number'] -= 1
+            st.rerun()
+    with col2:
+        st.write(f"Trang {st.session_state['page_number'] + 1}/{total_pages}")
+    with col3:
+        if st.button("▶️ Sau", key="next_bottom") and st.session_state['page_number'] < total_pages - 1:
+            st.session_state['page_number'] += 1
+            st.rerun()
     
     # Tạo nút tải xuống các định dạng khác nhau
     st.subheader("Tải xuống kết quả")
@@ -127,4 +170,3 @@ if __name__ == "__main__":
         show_transcript_details(st.session_state.transcription_results)
     else:
         st.warning("Không có kết quả phiên âm nào để hiển thị.")
-        

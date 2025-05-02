@@ -9,10 +9,12 @@ import tempfile
 import time
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Dict, Tuple, Callable
+from typing import Any, Callable, Dict, Tuple
 
 import streamlit as st
 from streamlit.runtime.uploaded_file_manager import UploadedFile
+
+from sources.core.stt_llm import transcript_audio
 
 # Thiết lập tiêu đề và thông tin
 st.set_page_config(page_title="Audio Transcription Demo", layout="wide")
@@ -28,10 +30,8 @@ logger = logging.getLogger(__name__)
 
 @st.cache_resource
 def import_from_core() -> Tuple[Callable, Callable]:
-    from sources.core.audio_processor import (
-        extract_transcript_text,
-        process_audio_with_alignment,
-    )
+    from sources.core.audio_processor import (extract_transcript_text,
+                                              process_audio_with_alignment)
     
     return extract_transcript_text, process_audio_with_alignment
 
@@ -247,9 +247,6 @@ def process_uploaded_audio(
         leading_silence_ms: Khoảng lặng đầu (ms)
         trailing_silence_ms: Khoảng lặng cuối (ms)
     """
-    # Tạo thư mục tạm để lưu kết quả phân đoạn (nếu cần)
-    temp_dir = tempfile.mkdtemp()
-
     try:
         # Hiển thị thông tin file và trạng thái xử lý
         st.info(f"Đang xử lý file: {uploaded_file.name}")
@@ -309,7 +306,7 @@ def process_uploaded_audio(
                     audio_file=audio_buffer,
                     leading_silence_ms=leading_silence_ms,
                     trailing_silence_ms=trailing_silence_ms,
-                    save_folder=temp_dir if do_alignment else None,
+                    save_folder=None,
                     max_retries=max_retries,
                     model=model,
                 )
@@ -323,11 +320,8 @@ def process_uploaded_audio(
 
             else:
                 # Chỉ phiên âm, không phân đoạn
-                combined_results = process_audio_with_alignment(
+                combined_results = transcript_audio(
                     audio_file=audio_buffer,
-                    leading_silence_ms=0,
-                    trailing_silence_ms=0,
-                    save_folder=None,
                     max_retries=max_retries,
                     model=model,
                 )
