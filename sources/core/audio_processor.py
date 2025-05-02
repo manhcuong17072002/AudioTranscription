@@ -200,6 +200,15 @@ def process_audio_with_alignment(
     if save_folder is not None and not isinstance(save_folder, str):
         raise ValueError("save_folder phải là None hoặc string")
     
+    # Tạo bản sao của BytesIO để tránh vấn đề con trỏ file
+    if isinstance(audio_file, BytesIO):
+        # Lưu lại nội dung bytes
+        audio_file.seek(0)
+        audio_bytes = audio_file.getvalue()
+        # Tạo BytesIO mới để sử dụng trong quá trình xử lý
+        audio_file_copy = BytesIO(audio_bytes)
+        audio_file = audio_file_copy
+    
     # Bước 0: Chuyển đổi audio sang mono nếu là stereo
     try:
         # Lưu giữ đường dẫn file nếu audio_file là string
@@ -224,6 +233,12 @@ def process_audio_with_alignment(
     
     # Bước 1: Phiên âm audio file
     logger.info("Bắt đầu xử lý audio")
+    
+    # Đảm bảo BytesIO ở đầu file trước khi phiên âm
+    if isinstance(audio_file, BytesIO):
+        audio_file.seek(0)
+        logger.debug("Reset con trỏ BytesIO trước khi phiên âm")
+        
     transcription_results = transcribe_audio(audio_file, max_retries, model)
     
     # Bước 2: Trích xuất transcript từ kết quả phiên âm
@@ -231,6 +246,11 @@ def process_audio_with_alignment(
     if not transcript_text:
         logger.warning("Không có văn bản được trích xuất từ kết quả phiên âm")
         return transcription_results
+    
+    # Đảm bảo BytesIO ở đầu file trước khi căn chỉnh
+    if isinstance(audio_file, BytesIO):
+        audio_file.seek(0)
+        logger.debug("Reset con trỏ BytesIO trước khi căn chỉnh")
     
     # Bước 3: Căn chỉnh text với audio để tạo các đoạn audio
     aligned_chunks = align_audio_with_text(

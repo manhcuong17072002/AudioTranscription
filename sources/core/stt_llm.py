@@ -18,9 +18,9 @@ magic = Magic(mime=True)
 # Đảm bảo mimetypes được khởi tạo
 mimetypes.init()
 
-# Danh sách API key
-API_KEYS = [API_KEY2]
-current_key_index = 0  # Bắt đầu với API_KEY2
+# Danh sách API key - sử dụng tất cả API keys có sẵn
+API_KEYS = [API_KEY1, API_KEY2]
+current_key_index = 0  # Bắt đầu với API_KEY1
 
 # Khởi tạo client với API key mặc định
 client = genai.Client(api_key=API_KEYS[current_key_index])
@@ -34,7 +34,7 @@ Please transcribe this audio file into text following these rules:
 [
     {
         "text": "The plain text transcription that accurately reflects the content of the audio. Each item should be one sentence, transcribed exactly as spoken in the audio.",
-        "description": "Provide a detailed description of the speaker's voice characteristics, including gender, tone, emotion, pronunciation, and speaking style. For example: A female speaker delivers a slightly expressive and animated speech with a very high-pitched voice, sounding very close-up in the recording. Almost no noise is present in the background, contributing to a clear and crisp listening experience. Each voice description must be distinct and not repeated across different entries."
+        "description": "Provide a detailed description of the speaker's voice characteristics, including gender, tone, emotion, pronunciation, and speaking style. For example: A female speaker delivers a slightly expressive and animated speech with a very high-pitched voice, sounding very close-up in the recording. Almost no noise is present in the background, contributing to a clear and crisp listening experience. Each description must be distinct and not repeated across different entries."
     }
 ]
 ```
@@ -146,7 +146,9 @@ def get_normalized_mime_type(file_data: bytes, filename: str) -> str:
 
 
 def transcript_audio(
-    file: Union[str, BytesIO], max_retries: int = 3, model: str = "gemini-2.0-flash"
+    file: Union[str, BytesIO],
+    max_retries: int = 5,
+    model: str = "gemini-2.0-flash",
 ) -> List[Dict[str, str]]:
     """
     Phiên âm nội dung của file audio sử dụng Google Gemini API.
@@ -166,6 +168,15 @@ def transcript_audio(
     # Biến để theo dõi file đã upload
     uploaded_file = None
 
+    # Tạo một bản sao của file để không ảnh hưởng đến đối tượng gốc
+    if isinstance(file, BytesIO):
+        # Tạo bản sao an toàn của BytesIO
+        file.seek(0)
+        file_copy = BytesIO(file.getvalue())
+        # Reset con trỏ về đầu trên cả file gốc và bản sao
+        file.seek(0)  # Reset file gốc về đầu cho các xử lý khác
+        file = file_copy  # Sử dụng bản sao cho xử lý của chúng ta
+
     try:
         # Xử lý file input và chuẩn bị config
         if isinstance(file, str):
@@ -174,9 +185,7 @@ def transcript_audio(
             filename = os.path.basename(file)
             file_source = file  # Lưu đường dẫn gốc
         elif isinstance(file, BytesIO):
-            # Đảm bảo con trỏ BytesIO ở đầu file để đọc đầy đủ nội dung
-            if hasattr(file, "seek"):
-                file.seek(0)
+            # BytesIO đã được reset về đầu khi tạo bản sao
             file_data = file.getvalue()
 
             # Xác định tên file
@@ -185,7 +194,7 @@ def transcript_audio(
             else:
                 filename = f"audio_{generate_random_string()}.wav"
 
-            file_source = file  # Lưu BytesIO object gốc
+            file_source = file  # File source là bản sao BytesIO
         else:
             raise ValueError("Định dạng file không được hỗ trợ")
 
@@ -230,6 +239,7 @@ def transcript_audio(
 
             except Exception as e:
                 error_message = str(e).lower()
+                last_attempt = attempt == max_retries - 1
 
                 # Kiểm tra các loại lỗi khác nhau
                 if "rate limit" in error_message or "quota" in error_message:
@@ -252,7 +262,31 @@ def transcript_audio(
                         f"Model đang quá tải, chờ {wait_time}s trước khi thử lại ({attempt+1}/{max_retries})..."
                     )
                     time.sleep(wait_time)
-                elif attempt < max_retries - 1:  # Nếu còn lần thử khác
+
+                    # Nếu là lần cuối và model vẫn overloaded, thử model không có hậu tố lite
+                    if last_attempt and "-lite" in model:
+                        non_lite_model = model.replace("-lite", "")
+                        print(f"Thử với model không lite: {non_lite_model}")
+                        try:
+                            response = client.models.generate_content(
+                                model=non_lite_model,
+                                contents=[prompt, uploaded_file],
+                            )
+                            response_text = response.text
+                            results = parse_response(response_text)
+                            print(f"Phiên âm thành công với model {non_lite_model}")
+                            return results
+                        except Exception as model_e:
+                            print(
+                                f"Không thành công với model {non_lite_model}: {model_e}"
+                            )
+
+                    if last_attempt:
+                        print("Cố gắng thêm lần cuối với thời gian chờ dài hơn...")
+                        time.sleep(10)  # Chờ thêm 10 giây
+                        max_retries += 1  # Thêm một lần thử nữa
+
+                elif not last_attempt:  # Nếu còn lần thử khác
                     # Lỗi khác nhưng vẫn còn cơ hội thử lại
                     wait_time = 2 * (attempt + 1)
                     print(f"Lỗi khi gọi API: {e}. Thử lại sau {wait_time}s...")
@@ -268,18 +302,21 @@ def transcript_audio(
     finally:
         # Xóa các file đã upload để giải phóng tài nguyên
         try:
-            # Xóa theo danh sách đã lưu
-            for f in client.files.list():
+            # Xóa theo tên file đã biết
+            if uploaded_file and hasattr(uploaded_file, "name"):
                 try:
-                    print(f"Xóa file đã upload: {f.name}")
-                    client.files.delete(name=f.name)
-                except:
-                    pass
+                    print(f"Xóa file đã upload: {uploaded_file.name}")
+                    client.files.delete(name=uploaded_file.name)
+                except Exception as e:
+                    print(f"Lỗi khi xóa file đã upload: {e}")
 
             # Xóa thêm các file khác có thể còn sót lại
-            for f in client.files.list():
-                if hasattr(f, "name"):
-                    print(f"Xóa file còn sót: {f.name}")
-                    client.files.delete(name=f.name)
+            try:
+                for f in client.files.list():
+                    if hasattr(f, "name"):
+                        print(f"Xóa file sót: {f.name}")
+                        client.files.delete(name=f.name)
+            except Exception as e:
+                print(f"Lỗi khi liệt kê/xóa files sót: {e}")
         except Exception as e:
-            print(f"Lỗi khi xóa files đã upload: {e}")
+            print(f"Lỗi tổng thể khi xóa files đã upload: {e}")
