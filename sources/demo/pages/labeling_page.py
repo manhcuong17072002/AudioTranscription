@@ -20,8 +20,9 @@ from sources.demo.utils.constants import (
     PROCESSING_MODES,
     SUPPORTED_AUDIO_FORMATS,
     TRANSCRIPT_PREVIEW_HEIGHT,
+    DEFAULT_MODEL,
 )
-from sources.demo.utils.cache_utils import get_current_settings, generate_cache_key
+from sources.demo.utils.cache_utils import get_current_settings, update_settings, generate_cache_key
 from sources.demo.utils.display_utils import show_transcript_details
 
 # Import từ core
@@ -73,7 +74,99 @@ def show_labeling_page():
         """
         )
 
-    # Form tải lên và xử lý audio
+    # Chọn cấu hình xử lý - đặt NGOÀI form để cập nhật ngay lập tức
+    with st.expander("Cấu hình xử lý"):
+        st.caption("Thay đổi cài đặt sẽ được tự động lưu và áp dụng cho tất cả các trang")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            # Định nghĩa các callback cho widgets
+            def on_model_change():
+                model = st.session_state.model_selectbox
+                current_model = settings.get("model", DEFAULT_MODEL)
+                if model != current_model:
+                    settings_to_update = settings.copy()
+                    settings_to_update["model"] = model
+                    update_settings(settings_to_update)
+                    st.session_state.settings_updated = True
+
+            def on_max_retries_change():
+                max_retries = st.session_state.max_retries_slider
+                current_max_retries = settings.get("max_retries", 3)
+                if max_retries != current_max_retries:
+                    settings_to_update = settings.copy()
+                    settings_to_update["max_retries"] = max_retries
+                    update_settings(settings_to_update)
+                    st.session_state.settings_updated = True
+            
+            # Selectbox cho model với callback
+            current_model = settings.get("model", DEFAULT_MODEL)
+            model_index = MODEL_OPTIONS.index(current_model) if current_model in MODEL_OPTIONS else 0
+            model = st.selectbox(
+                "Model AI",
+                options=MODEL_OPTIONS,
+                index=model_index,
+                help="Model AI sử dụng để phiên âm audio",
+                key="model_selectbox",
+                on_change=on_model_change
+            )
+            
+            # Slider cho max_retries với callback
+            max_retries = st.slider(
+                "Số lần thử lại khi gặp lỗi",
+                min_value=1,
+                max_value=10,
+                value=settings.get("max_retries", 3),
+                help="Số lần thử lại tối đa khi gặp lỗi rate limit",
+                key="max_retries_slider",
+                on_change=on_max_retries_change
+            )
+
+        with col2:
+            # Callback cho các slider
+            def on_leading_silence_change():
+                leading_silence_ms = st.session_state.leading_silence_slider
+                current_leading_silence = settings.get("leading_silence_ms", 100)
+                if leading_silence_ms != current_leading_silence:
+                    settings_to_update = settings.copy()
+                    settings_to_update["leading_silence_ms"] = leading_silence_ms
+                    update_settings(settings_to_update)
+                    st.session_state.settings_updated = True
+
+            def on_trailing_silence_change():
+                trailing_silence_ms = st.session_state.trailing_silence_slider
+                current_trailing_silence = settings.get("trailing_silence_ms", 100)
+                if trailing_silence_ms != current_trailing_silence:
+                    settings_to_update = settings.copy()
+                    settings_to_update["trailing_silence_ms"] = trailing_silence_ms
+                    update_settings(settings_to_update)
+                    st.session_state.settings_updated = True
+            
+            # Slider cho leading_silence_ms với callback
+            leading_silence_ms = st.slider(
+                "Khoảng im lặng đầu (milliseconds)",
+                min_value=0,
+                max_value=1000,
+                value=settings.get("leading_silence_ms", 100),
+                step=10,
+                help="Khoảng im lặng (milliseconds) thêm vào đầu mỗi đoạn audio",
+                key="leading_silence_slider",
+                on_change=on_leading_silence_change
+            )
+            
+            # Slider cho trailing_silence_ms với callback  
+            trailing_silence_ms = st.slider(
+                "Khoảng im lặng cuối (milliseconds)",
+                min_value=0,
+                max_value=1000,
+                value=settings.get("trailing_silence_ms", 100),
+                step=10,
+                help="Khoảng im lặng (milliseconds) thêm vào cuối mỗi đoạn audio",
+                key="trailing_silence_slider",
+                on_change=on_trailing_silence_change
+            )
+
+    # Form tải lên và xử lý audio - giờ chỉ còn phần upload và nút xử lý
     with st.form("upload_form"):
         # Tải lên file audio
         uploaded_file = st.file_uploader(
@@ -88,47 +181,14 @@ def show_labeling_page():
             help="Chọn chỉ phiên âm để lấy text, hoặc phiên âm và phân đoạn để có các file audio riêng cho từng câu",
         )
 
-        # Chọn cấu hình xử lý
-        with st.expander("Cấu hình xử lý"):
-            col1, col2 = st.columns(2)
-
-            with col1:
-                model = st.selectbox(
-                    "Model AI",
-                    options=MODEL_OPTIONS,
-                    index=0,
-                    help="Model AI sử dụng để phiên âm audio",
-                )
-
-                max_retries = st.slider(
-                    "Số lần thử lại khi gặp lỗi",
-                    min_value=1,
-                    max_value=10,
-                    value=settings.get("max_retries", 3),
-                    help="Số lần thử lại tối đa khi gặp lỗi rate limit",
-                )
-
-            with col2:
-                leading_silence_ms = st.slider(
-                    "Khoảng im lặng đầu (milliseconds)",
-                    min_value=0,
-                    max_value=1000,
-                    value=settings.get("leading_silence_ms", 100),
-                    step=10,
-                    help="Khoảng im lặng (milliseconds) thêm vào đầu mỗi đoạn audio",
-                )
-
-                trailing_silence_ms = st.slider(
-                    "Khoảng im lặng cuối (milliseconds)",
-                    min_value=0,
-                    max_value=1000,
-                    value=settings.get("trailing_silence_ms", 100),
-                    step=10,
-                    help="Khoảng im lặng (milliseconds) thêm vào cuối mỗi đoạn audio",
-                )
-
         # Nút submit
         submitted = st.form_submit_button(BUTTON_PROCESS_AUDIO)
+
+    # Hiển thị thông báo nếu cài đặt đã được cập nhật
+    if "settings_updated" in st.session_state and st.session_state.settings_updated:
+        st.sidebar.success("Đã tự động cập nhật cài đặt. Các trang khác sẽ sử dụng cài đặt mới này.", icon="✅")
+        # Đặt lại cờ đánh dấu
+        st.session_state.settings_updated = False
 
     # Xử lý khi người dùng submit form
     if submitted and uploaded_file is not None:
@@ -218,7 +278,7 @@ def process_uploaded_audio(
             # Tạo lại BytesIO từ bytes vì có thể đã đọc cũ nếu kiểm tra cache
             audio_buffer = BytesIO(audio_bytes)
 
-            status_text.text("Đang xử lý audio...")
+            status_text.text(f"Đang xử lý audio sử dụng {model} + Whisper...")
             progress_bar.progress(20)
 
             if do_alignment:
@@ -262,6 +322,14 @@ def process_uploaded_audio(
             cache_count = len(st.session_state.get("audio_cache", {}))
             cache_status = "sử dụng kết quả có sẵn" if cache_used else "lưu kết quả mới"
             st.sidebar.info(f"Cache: {cache_count} kết quả ({cache_status})")
+
+        # Cập nhật lại settings từ form để đồng bộ với trang settings.py
+        update_settings({
+            "model": model,
+            "max_retries": max_retries,
+            "leading_silence_ms": leading_silence_ms,
+            "trailing_silence_ms": trailing_silence_ms,
+        })
 
         # Hoàn thành
         progress_bar.progress(100)

@@ -31,10 +31,12 @@ def show_settings():
         st.subheader("Cài đặt phiên âm")
         
         # Model AI sử dụng cho phiên âm
+        current_model = current_settings.get("model", MODEL_OPTIONS[0])
+        model_index = MODEL_OPTIONS.index(current_model) if current_model in MODEL_OPTIONS else 0
         model = st.selectbox(
             "Model AI",
             options=MODEL_OPTIONS,
-            index=0,
+            index=model_index,
             help="Model AI sử dụng để phiên âm audio"
         )
         
@@ -95,7 +97,7 @@ def show_settings():
         # Lưu vào session state sử dụng hàm update_settings
         update_settings(settings)
         
-        st.success("Đã lưu cài đặt thành công!")
+        st.success("Đã lưu cài đặt thành công! Cài đặt sẽ được áp dụng cho tất cả các trang.")
         
         return settings
     
