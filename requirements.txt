@@ -1,4 +1,7 @@
 google-genai
 pydub
+plotly
 python-magic
 stable-ts
+streamlit
+torch
