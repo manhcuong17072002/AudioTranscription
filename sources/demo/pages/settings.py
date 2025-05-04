@@ -5,6 +5,13 @@ import streamlit as st
 import os
 from typing import Dict, Any
 
+from sources.demo.utils.constants import (
+    MODEL_OPTIONS,
+    TAB_LABELS,
+    BUTTON_SAVE_SETTINGS
+)
+from sources.demo.utils.cache_utils import get_current_settings, update_settings
+
 def show_settings():
     """
     Hiển thị và quản lý các cài đặt nâng cao cho ứng dụng.
@@ -15,14 +22,10 @@ def show_settings():
     st.title("Cài đặt nâng cao")
     
     # Đọc các cài đặt hiện tại từ session state (nếu có)
-    current_settings = st.session_state.get("settings", {})
+    current_settings = get_current_settings()
     
     # Tab cài đặt
-    tab1, tab2, tab3 = st.tabs([
-        "Cài đặt phiên âm", 
-        "Cài đặt căn chỉnh",
-        "Cài đặt hệ thống"
-    ])
+    tab1, tab2, tab3 = st.tabs(TAB_LABELS)
     
     with tab1:
         st.subheader("Cài đặt phiên âm")
@@ -30,7 +33,7 @@ def show_settings():
         # Model AI sử dụng cho phiên âm
         model = st.selectbox(
             "Model AI",
-            options=["gemini-2.0-flash", "gemini-2.0-flash-lite"],
+            options=MODEL_OPTIONS,
             index=0,
             help="Model AI sử dụng để phiên âm audio"
         )
@@ -80,7 +83,7 @@ def show_settings():
         st.info("Các tệp được xử lý sẽ không được lưu trên server. Để lưu kết quả, hãy sử dụng chức năng tải xuống sau khi xử lý.")
     
     # Lưu cài đặt vào session state khi người dùng nhấn nút lưu
-    if st.button("Lưu cài đặt"):
+    if st.button(BUTTON_SAVE_SETTINGS):
         settings = {
             "model": model,
             "max_retries": max_retries,
@@ -89,8 +92,8 @@ def show_settings():
             "cache_results": cache_results
         }
         
-        # Lưu vào session state
-        st.session_state["settings"] = settings
+        # Lưu vào session state sử dụng hàm update_settings
+        update_settings(settings)
         
         st.success("Đã lưu cài đặt thành công!")
         
