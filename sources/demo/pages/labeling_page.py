@@ -19,7 +19,7 @@ from sources.demo.utils.constants import (
     MODEL_OPTIONS,
     PROCESSING_MODES,
     SUPPORTED_AUDIO_FORMATS,
-    TRANSCRIPT_PREVIEW_HEIGHT
+    TRANSCRIPT_PREVIEW_HEIGHT,
 )
 from sources.demo.utils.cache_utils import get_current_settings, generate_cache_key
 from sources.demo.utils.display_utils import show_transcript_details
@@ -33,15 +33,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 @st.cache_resource
 def import_from_core():
     """Import các hàm cần thiết từ core module."""
-    from sources.core.audio_processor import (extract_transcript_text,
-                                             process_audio_with_alignment)
-    
-    return extract_transcript_text, process_audio_with_alignment
+    from sources.core.audio_processor import process_audio_with_alignment
 
-extract_transcript_text, process_audio_with_alignment = import_from_core()
+    return process_audio_with_alignment
+
+
+process_audio_with_alignment = import_from_core()
+
 
 def show_labeling_page():
     """
@@ -74,7 +76,9 @@ def show_labeling_page():
     # Form tải lên và xử lý audio
     with st.form("upload_form"):
         # Tải lên file audio
-        uploaded_file = st.file_uploader("Tải lên file audio", type=SUPPORTED_AUDIO_FORMATS)
+        uploaded_file = st.file_uploader(
+            "Tải lên file audio", type=SUPPORTED_AUDIO_FORMATS
+        )
 
         # Chọn chế độ xử lý
         processing_mode = st.radio(
@@ -137,6 +141,14 @@ def show_labeling_page():
             trailing_silence_ms,
         )
 
+    if "transcription_results" in st.session_state and st.session_state.transcription_results:
+        # Hiển thị kết quả chi tiết từng đoạn
+        show_transcript_details(
+            st.session_state.transcription_results,
+            page_state_key="labeling_page_number",
+        )
+
+
 def process_uploaded_audio(
     uploaded_file: UploadedFile,
     processing_mode: str,
@@ -147,7 +159,7 @@ def process_uploaded_audio(
 ):
     """
     Xử lý file audio đã tải lên.
-    
+
     Args:
         uploaded_file: File audio đã tải lên
         processing_mode: Chế độ xử lý ("Chỉ phiên âm" hoặc "Phiên âm và phân đoạn")
@@ -245,9 +257,6 @@ def process_uploaded_audio(
         # Lưu kết quả vào session state để các trang khác có thể truy cập
         st.session_state.transcription_results = combined_results
 
-        # Trích xuất văn bản từ kết quả để hiển thị
-        transcript_text = extract_transcript_text(combined_results)
-
         # Hiển thị thống kê cache nếu sử dụng cache
         if use_cache:
             cache_count = len(st.session_state.get("audio_cache", {}))
@@ -261,16 +270,10 @@ def process_uploaded_audio(
         # Thông báo thành công
         st.success("Đã xử lý audio thành công!")
 
-        # Hiển thị preview kết quả dạng text đơn giản
-        with st.expander("Xem trước văn bản phiên âm tổng hợp", expanded=False):
-            st.text_area("Kết quả phiên âm", transcript_text, height=TRANSCRIPT_PREVIEW_HEIGHT)
-
-        # Hiển thị kết quả chi tiết từng đoạn
-        show_transcript_details(combined_results, page_state_key='labeling_page_number')
-
     except Exception as e:
         st.error(f"Đã xảy ra lỗi: {str(e)}")
         logger.error(f"Lỗi khi xử lý audio: {str(e)}", exc_info=True)
+
 
 if __name__ == "__main__":
     show_labeling_page()

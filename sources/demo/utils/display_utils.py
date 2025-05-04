@@ -36,20 +36,21 @@ def show_transcript_details(transcription_results: List[Dict], page_state_key: s
         st.warning("Không có kết quả phiên âm để hiển thị")
         return
     
-    # Hiển thị tổng kết
-    st.info(f"Tổng số đoạn: {len(transcription_results)}")
-    
-    # Tạo DataFrame từ dữ liệu để hiển thị dưới dạng bảng
-    table_data = []
-    for i, result in enumerate(transcription_results):
-        table_data.append({
-            "STT": i+1,
-            "Nội dung": result.get("text", ""),
-            "Đặc điểm giọng nói": result.get("description", "")
-        })
-    
-    df = pd.DataFrame(table_data)
-    st.dataframe(df, use_container_width=True, hide_index = True)
+    # Hiển thị tổng kết trong expander
+    with st.expander("Tổng quan kết quả", expanded=True):
+        st.info(f"Tổng số đoạn: {len(transcription_results)}")
+        
+        # Tạo DataFrame từ dữ liệu để hiển thị dưới dạng bảng
+        table_data = []
+        for i, result in enumerate(transcription_results):
+            table_data.append({
+                "STT": i+1,
+                "Nội dung": result.get("text", ""),
+                "Đặc điểm giọng nói": result.get("description", "")
+            })
+        
+        df = pd.DataFrame(table_data)
+        st.dataframe(df, use_container_width=True, hide_index = True)
     
     # Cài đặt phân trang
     if page_state_key not in st.session_state:
@@ -76,33 +77,54 @@ def show_transcript_details(transcription_results: List[Dict], page_state_key: s
     end_idx = min(start_idx + items_per_page, len(transcription_results))
     page_results = transcription_results[start_idx:end_idx]
     
-    # Hiển thị thanh điều hướng
-    st.subheader(f"Chi tiết từng đoạn (Trang {st.session_state[page_state_key] + 1}/{total_pages})")
-    st.caption(f"Hiển thị đoạn {start_idx+1}-{end_idx} trong tổng số {len(transcription_results)} đoạn")
+    # Hiển thị chi tiết từng đoạn trong expander
+    with st.expander(f"Hiển thị chi tiết từng đoạn (Trang {st.session_state[page_state_key] + 1}/{total_pages})", expanded=True):
+        st.caption(f"Hiển thị đoạn {start_idx+1}-{end_idx} trong tổng số {len(transcription_results)} đoạn")
         
-    # Hiển thị chi tiết từng đoạn trong trang hiện tại
-    for i, result in enumerate(page_results, start=start_idx + 1):
-        with st.expander(f"Đoạn {i}: {result.get('text', '')[:50]}..."):
-            col1, col2 = st.columns(2)
+        # Hiển thị chi tiết trong container có chiều cao cố định
+        with st.container(height=500):
+            # CSS cho container thay thế expander
+            st.markdown("""
+            <style>
+            .transcript-item {
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                padding: 10px;
+                margin-bottom: 10px;
+                background-color: #f9f9f9;
+            }
+            </style>
+            """, unsafe_allow_html=True)
             
-            with col1:
-                st.text_area("Nội dung", result.get("text", ""), height=100)
-            
-            with col2:
-                st.text_area("Đặc điểm giọng nói", result.get("description", ""), height=100)
-            
-            # Phần hiển thị audio
-            st.subheader("Audio")
-            
-            # Hiển thị audio nếu có, ngược lại hiển thị thông báo
-            if "audio" in result:
-                audio_buffer = BytesIO()
-                result["audio"].export(audio_buffer, format="wav")
-                audio_buffer.seek(0)
+            # Hiển thị chi tiết từng đoạn trong trang hiện tại
+            for i, result in enumerate(page_results, start=start_idx + 1):
+                # Tiêu đề đoạn
+                st.markdown(f"### Đoạn {i}: {result.get('text', '')[:50]}...")
+                                
+                # Nội dung chi tiết đoạn
+                col1, col2 = st.columns(2)
                 
-                st.audio(audio_buffer, format="audio/wav")
-            else:
-                st.warning("Không có audio cho đoạn này")
+                with col1:
+                    st.text_area("Nội dung", result.get("text", ""), height=100)
+                
+                with col2:
+                    st.text_area("Đặc điểm giọng nói", result.get("description", ""), height=100)
+                
+                # Phần hiển thị audio
+                st.markdown("#### Audio")
+                
+                # Hiển thị audio nếu có, ngược lại hiển thị thông báo
+                if "audio" in result:
+                    audio_buffer = BytesIO()
+                    result["audio"].export(audio_buffer, format="wav")
+                    audio_buffer.seek(0)
+                    
+                    st.audio(audio_buffer, format="audio/wav")
+                else:
+                    st.warning("Không có audio cho đoạn này")
+                
+                # Thêm đường ngăn cách giữa các đoạn
+                st.markdown("---")
     
     # Hiển thị thanh điều hướng ở dưới
     col1, col2, col3 = st.columns([5, 5, 1])
@@ -131,7 +153,7 @@ def show_download_buttons(transcription_results: List[Dict]):
     """
     st.subheader("Tải xuống kết quả")
     
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3 = st.columns((5, 5, 3))
     
     with col1:
         # Tải xuống JSON
