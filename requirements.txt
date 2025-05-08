@@ -1,7 +1,8 @@
-google-genai
+google-genai==1.10.0
 pydub
 plotly
 python-magic
-stable-ts
+stable-ts==2.19.0
 streamlit
-torch
+torch==2.6.0
+torchaudio==2.6.0
