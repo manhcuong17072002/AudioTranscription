@@ -1,0 +1,20 @@
+flowchart TD
+    A[Audio Input] --> B{Cached?}
+    
+    B -->|Yes| C[Retrieve from Cache]
+    B -->|No| D[Generate Cache Key]
+    
+    D --> E[AudioProcessor]
+    
+    E --> F[Transcription + Alignment]
+    F --> G[Store in Cache]
+    G --> H[Return Results]
+    C --> H
+    
+    subgraph "Resource Management" 
+        I[Model Loading]
+        J[File Handling]
+    end
+    
+    I -->|@st.cache_resource| E
+    J -->|BytesIO Clean-up| E

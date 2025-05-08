@@ -1,0 +1,22 @@
+flowchart TD
+    A[API Call] --> B{Success?}
+    B -->|Yes| C[Process Response]
+    B -->|No| D{Error Type?}
+    
+    D -->|Rate Limit| E[Wait with exponential backoff]
+    D -->|Model Overloaded| F[Wait longer]
+    D -->|Other Errors| G[Simple retry]
+    
+    E --> H{Last attempt?}
+    F --> H
+    G --> H
+    
+    H -->|No| A
+    H -->|Yes| I{Lite model?}
+    
+    I -->|Yes| J[Try with non-lite model]
+    I -->|No| K[Return error]
+    
+    J --> L{Success?}
+    L -->|Yes| C
+    L -->|No| K

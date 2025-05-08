@@ -1,0 +1,44 @@
+sequenceDiagram
+    actor User
+    participant UI as Demo UI
+    participant Processor as AudioProcessor
+    participant Transcriber as AudioTranscriber
+    participant Aligner as TextAligner
+    participant GeminiAPI
+    participant WhisperModel
+    
+    User->>UI: Upload audio file
+    
+    alt Cache available
+        UI->>UI: Check cache
+        UI-->>User: Return cached results
+    else No cache
+        UI->>Processor: process_audio()
+        Processor->>Processor: _convert_to_mono()
+        
+        Processor->>Transcriber: transcribe()
+        Transcriber->>Transcriber: _get_normalized_mime_type()
+        Transcriber->>GeminiAPI: Upload file
+        Transcriber->>GeminiAPI: Generate content
+        
+        GeminiAPI-->>Transcriber: Text + descriptions
+        Transcriber->>Transcriber: _parse_response()
+        Transcriber-->>Processor: Transcription results
+        
+        Processor->>Processor: _extract_transcript_text()
+        
+        Processor->>Aligner: align_text()
+        Aligner->>WhisperModel: Align text with audio
+        WhisperModel-->>Aligner: Word-level timestamps
+        Aligner->>Aligner: Cut audio segments
+        Aligner-->>Processor: Audio chunks + timestamps
+        
+        Processor->>Processor: _combine_results()
+        Processor-->>UI: Final results
+        
+        UI->>UI: Cache results
+        UI-->>User: Display results
+        
+        User->>UI: Download/Export
+        UI-->>User: Results in selected format
+    end

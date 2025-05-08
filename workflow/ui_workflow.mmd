@@ -1,0 +1,33 @@
+flowchart TD
+    A[Homepage] --> B[Navigation]
+    
+    B --> C[TTS Labeling]
+    B --> D[Transcript View]
+    
+    C --> E[Settings]
+    C --> F[Upload Form]
+    
+    E --> G[General Settings]
+    E --> H[API Settings]
+    E --> I[Advanced Settings]
+    E --> J[Cache Settings]
+    
+    F --> K{Process?}
+    K -->|Yes| L[Processing File]
+    
+    L --> M{Use Cache?}
+    M -->|Yes| N[Fetch from Cache]
+    M -->|No| O[Process File]
+    
+    N --> P[Display Results]
+    O --> P
+    
+    P --> Q[Audio Segments]
+    P --> R[Text Results]
+    P --> S[Export Options]
+    
+    S --> T[Download Full Text]
+    S --> U[Download ZIP]
+    S --> V[Download JSON]
+    
+    D --> P

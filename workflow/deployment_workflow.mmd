@@ -1,0 +1,21 @@
+flowchart TD
+    A[Local Development] --> B[Package Build]
+    
+    B --> C[Python Package]
+    B --> D[Docker Image]
+    
+    C --> E[PyPI Publication]
+    D --> F[Container Registry]
+    
+    E --> G[Library Users]
+    F --> H[Docker Deployment]
+    
+    H --> I[Web Server]
+    H --> J[API Server]
+    H --> K[Database]
+    
+    I --> L[Load Balancer]
+    J --> L
+    
+    L --> M[Users]
+    M --> L
