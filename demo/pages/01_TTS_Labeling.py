@@ -23,6 +23,7 @@ from demo.utils.constants import (
     DEFAULT_MODEL,
     DEVICE_OPTIONS,
     DEFAULT_DEVICE,
+    APP_FOOTER
 )
 from demo.utils.cache_utils import (
     get_current_settings,
@@ -31,6 +32,7 @@ from demo.utils.cache_utils import (
     clear_cache,
 )
 from demo.utils.display_utils import show_transcript_details
+from demo.utils.custom_styles import load_css
 
 # Import from audio_transcription library
 from audio_transcription import AudioTranscriber, AudioProcessor
@@ -333,35 +335,52 @@ def show_labeling_page():
     """
     Display transcription and segmentation page.
     """
+    # Apply custom CSS
+    st.markdown(load_css(), unsafe_allow_html=True)
+    
+    # Page header
     st.title(APP_TITLE)
+    st.markdown("--------------")
+    st.header("Transcription & Segmentation")
 
     # Get current settings
     settings = get_current_settings()
 
-    # Display introduction
+    # Sidebar navigation
+    st.sidebar.title("Menu")
+    st.sidebar.markdown(
+        """
+        <div class="sidebar-menu">
+            <a href="/">📄 Home</a>
+            <a href="/TTS_Labeling" class="active">🎤 Transcription & Segmentation</a>
+            <a href="/Transcript_view">👁️ View Results</a>
+        </div>
+        """, 
+        unsafe_allow_html=True
+    )
+
+    # Introduction in expander
     with st.expander("Introduction"):
         st.markdown(
             """
-        **This tool helps you:**
-        - Transcribe audio content using Google Gemini AI
-        - Segment audio by sentences/paragraphs
-        - Export results as JSON or separate audio and text files
-        
-        **How to use:**
-        1. Upload audio file (WAV, MP3 format)
-        2. Select processing mode (transcription only or transcription & segmentation)
-        3. Click process button and wait for results
-        4. View and download results
-        
-        **Note:** Processing time depends on audio length and processing options.
-        """
+            **This tool helps you:**
+            - Transcribe audio content using Google Gemini AI
+            - Segment audio by sentences/paragraphs
+            - Export results as JSON or separate audio and text files
+            
+            **How to use:**
+            1. Upload audio file (WAV, MP3 format)
+            2. Select processing mode (transcription only or transcription & segmentation)
+            3. Click process button and wait for results
+            4. View and download results
+            
+            **Note:** Processing time depends on audio length and processing options.
+            """
         )
 
-    # Direct user to settings
-    st.caption("Use the Settings section below to configure processing options")
-
     # Settings Section
-    st.header("Settings")
+    st.markdown("-------------")
+    st.header("⚙️ Settings")
 
     # Create tabs for different setting categories
     tab_general, tab_api, tab_advanced, tab_cache = st.tabs(
@@ -385,8 +404,10 @@ def show_labeling_page():
         st.success("Settings updated successfully!", icon="✅")
         # Note: We don't reset the flag here as it's handled after the form
 
-    # Upload and processing form
+    # Upload and processing section
     st.markdown("-------------")
+    st.header("🔊 Process Audio")
+    
     with st.form("upload_form"):
         # Upload audio file
         uploaded_file = st.file_uploader(
@@ -415,20 +436,32 @@ def show_labeling_page():
 
     # Process when user submits form
     if submitted and uploaded_file is not None:
+        # Results section
+        st.header("🔍 Processing Results")
+        
         process_uploaded_audio(
             uploaded_file,
             processing_mode,
         )
 
+    # Display results if available
     if (
         "transcription_results" in st.session_state
         and st.session_state.transcription_results
     ):
+        # Results section
+        st.markdown("-------------")
+        st.header("📋 Transcription Results")
+        
         # Show detailed results for each segment
         show_transcript_details(
             st.session_state.transcription_results,
             page_state_key="labeling_page_number",
         )
+    
+    # Footer
+    st.sidebar.markdown("---")
+    st.sidebar.markdown(APP_FOOTER)
 
 
 def process_uploaded_audio(

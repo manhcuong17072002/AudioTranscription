@@ -91,7 +91,7 @@ def show_transcript_details(
     st.markdown("---")
     st.subheader("Export Options")
     
-    col1, col2 = st.columns(2)
+    col1, col2 = st.columns([7, 1])
     
     # Export as JSON option
     with col1:
