@@ -1,55 +1,102 @@
 # Quy tắc và chỉ dẫn cho dự án Audio Transcription
 
 ## Quy ước đặt tên
-1. **Files**: Sử dụng snake_case cho tên file (ví dụ: audio_understanding.py, split_audio.py)
-2. **Functions**: Sử dụng snake_case cho tên hàm (ví dụ: transcript_audios())
-3. **Variables**: Sử dụng snake_case cho biến và hằng số
-4. **Classes**: Nếu sử dụng classes, dùng PascalCase (chưa có ví dụ trong dự án hiện tại)
+1. **Files**: Sử dụng snake_case cho tên file (ví dụ: transcriber.py, processor.py)
+2. **Classes**: Sử dụng PascalCase cho tên class (ví dụ: AudioTranscriber, TextAligner)
+3. **Functions/Methods**: Sử dụng snake_case cho tên hàm và phương thức (ví dụ: transcribe(), align_text())
+4. **Private methods/variables**: Bắt đầu bằng dấu gạch dưới (ví dụ: _parse_response(), _convert_to_mono())
+5. **Constants**: Sử dụng UPPERCASE với gạch dưới (ví dụ: DEFAULT_PROMPT, SUPPORTED_AUDIO_FORMATS)
+6. **Variables**: Sử dụng snake_case cho biến và tham số
 
 ## Cấu trúc file
 - Imports được đặt ở đầu file, theo thứ tự: thư viện chuẩn, thư viện bên thứ ba, modules nội bộ
-- Docstrings và comments sử dụng tiếng Việt
-- README viết bằng tiếng Việt
+- Docstrings sử dụng Google-style docstrings
+- Mỗi file bắt đầu với docstring mô tả module
+- Comments và docstrings viết bằng tiếng Anh
+- Các file trong demo folder có thể sử dụng tiếng Việt trong giao diện người dùng
+
+## Cấu trúc thư mục
+- audio_transcription/: Thư viện chính
+- demo/: Ứng dụng demo với Streamlit
+- demo/pages/: Các trang phụ của ứng dụng Streamlit
+- demo/utils/: Các tiện ích cho ứng dụng demo
+- samples/: File audio mẫu cho testing
+- memory-bank/: Tài liệu dự án
 
 ## Nguyên tắc mã nguồn
-1. **Mô-đun hóa**: Tách chức năng thành các modules riêng biệt, dễ quản lý
-2. **Xử lý lỗi**: Bắt và xử lý các trường hợp lỗi, đặc biệt là khi gọi API
+1. **Object-Oriented**: Sử dụng lập trình hướng đối tượng với các class có trách nhiệm rõ ràng
+2. **Xử lý lỗi mạnh mẽ**: Bắt và xử lý các trường hợp lỗi, đặc biệt là khi gọi API
 3. **Cấu hình linh hoạt**: Thiết kế để dễ dàng thay đổi tham số và cấu hình
+4. **Single Responsibility**: Mỗi class/module chỉ có một nhiệm vụ chính
+5. **Dependency Injection**: Truyền các dependency qua constructor thay vì hardcode
+6. **Resource Management**: Đảm bảo resources (files, memory) được giải phóng sau khi sử dụng
+7. **Logging**: Sử dụng logging thay vì print statements để debug
+8. **Type Hints**: Sử dụng Python type hints cho tham số và giá trị trả về
 
 ## Cách xử lý API key
-1. API keys được lưu trữ trong api_key.py (không check in lên git)
-2. Đã thiết lập cơ chế thay đổi API key khi bị rate limit
-3. Trong tương lai sẽ có hệ thống quản lý API key của người dùng
+1. API keys có thể được cung cấp qua:
+   - Trực tiếp khi khởi tạo class (api_key parameter)
+   - Biến môi trường GOOGLE_API_KEY
+   - Lưu trong cài đặt của ứng dụng web
+2. Không bao giờ commit API key lên git repository
+3. Triển khai cơ chế thay đổi API key khi bị rate limit
+4. Trong web UI, API key được lưu trong session state (không gửi lên server)
 
-## Audio processing
-1. File audio nên có định dạng .wav cho tương thích tốt nhất
-2. Đối với file dài, sử dụng phương pháp cắt theo khoảng lặng
-3. Dự án hiện có các file audio mẫu: 3.6.wav, 10.1.wav, NHLy.wav, NDSon.wav
+## File handling
+1. Hỗ trợ multiple input types: string path, BytesIO, bytes
+2. Audio input được chuyển sang mono nếu là stereo
+3. Xác định MIME type dựa trên content và filename
+4. Hỗ trợ file formats: WAV, MP3 (chính), và các định dạng khác (sẽ được thêm)
+5. Đảm bảo cleanup resources sau khi xử lý (đặc biệt là file đã upload lên API)
 
-## Tương tác với Gemini API
-1. Sử dụng model "gemini-2.0-flash" cho transcription
-2. Prompt chuẩn bị sẵn trong audio_understanding.py
-3. Kết quả trả về dạng JSON với transcript và voice description
+## Tương tác với API
+1. **Transcription**
+   - Sử dụng model "gemini-2.0-flash" cho transcription qua Gemini API
+   - Xử lý các rate limits và error cases
+   - Kết quả trả về dạng JSON với transcript và voice description
+
+2. **Alignment**
+   - Sử dụng Stable Whisper với model "large-v3" cho alignment
+   - Hỗ trợ hardware acceleration (CPU/GPU/MPS)
+   - Alignment results bao gồm timestamps và audio segments
+
+## Web UI Development
+1. Sử dụng Streamlit framework cho giao diện web
+2. Tổ chức theo mô hình multi-page app
+3. Sử dụng cache cho API results và cached resources
+4. Hiển thị kết quả dạng bảng và audio player
+5. Hỗ trợ download kết quả dưới dạng ZIP hoặc JSON
 
 ## Workflow phát triển
 1. Thử nghiệm trong Jupyter Notebook (test.ipynb)
-2. Triển khai thành modules Python
-3. Tích hợp các modules lại với nhau
-4. Kiểm thử với các file mẫu
+2. Triển khai thành các class trong thư viện chính
+3. Tích hợp các modules thành quy trình hoàn chỉnh
+4. Phát triển giao diện người dùng với Streamlit
+5. Testing và refactoring
 
 ## Học hỏi và ghi chú
-1. Gemini API có rate limit cần lưu ý
-2. Prompt engineering rất quan trọng để có kết quả chính xác
-3. pydub là thư viện hiệu quả để xử lý file audio trong Python
-4. python-magic giúp xác định MIME type của file
+1. **API Handling**:
+   - Gemini API có rate limit và quotas cần quản lý
+   - Cần xử lý upload và cleanup files sau khi xong
+   - Stable Whisper alignment có thể tốn thời gian cho file dài
 
-## Cấu trúc Memory Bank
-Duy trì cấu trúc Memory Bank với 6 file cốt lõi:
-1. projectbrief.md: Nền tảng dự án
-2. productContext.md: Bối cảnh sản phẩm
-3. systemPatterns.md: Kiến trúc và mẫu thiết kế
-4. techContext.md: Công nghệ sử dụng
-5. activeContext.md: Trọng tâm hiện tại
-6. progress.md: Tiến độ và kế hoạch
+2. **Audio Processing**:
+   - Conversion stereo to mono cải thiện kết quả transcription
+   - pydub rất hữu ích cho audio manipulation
+   - FFmpeg là dependency cần thiết cho nhiều định dạng audio
 
-Cập nhật Memory Bank khi có thay đổi lớn về thiết kế hoặc chức năng.
+3. **UX Design**:
+   - Streamlit components như st.form tối ưu cho user experience
+   - Cache giảm đáng kể thời gian chờ cho users
+   - Progress bars và status updates làm giảm perceived wait time
+
+4. **Development Best Practices**:
+   - @st.cache_resource quan trọng cho model loading
+   - BytesIO giúp xử lý file trong memory
+   - Quản lý file pointers (seek(0)) quan trọng khi truyền file giữa components
+
+## Memory Bank Management
+- Duy trì Memory Bank với 6 file cốt lõi cập nhật
+- Cập nhật các file khi có thay đổi đáng kể trong project
+- Đảm bảo các file phản ánh trạng thái hiện tại của dự án
+- Sử dụng diagrams để visualization khi cần thiết

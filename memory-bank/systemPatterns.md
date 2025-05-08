@@ -1,117 +1,218 @@
 # Mẫu thiết kế hệ thống
 
 ## Kiến trúc hệ thống
-Dự án Audio Transcription sử dụng kiến trúc module với các thành phần rõ ràng, cho phép mở rộng và bảo trì dễ dàng. Hiện tại, hệ thống bao gồm các thành phần chính:
+Dự án Audio Transcription sử dụng kiến trúc module với các thành phần rõ ràng, cho phép mở rộng và bảo trì dễ dàng. Hệ thống hiện tại gồm hai phần chính: thư viện cốt lõi (audio_transcription) và ứng dụng demo (demo).
 
+### Kiến trúc tổng quan
 ```mermaid
 graph TD
-    A[Client/User] --> B[Audio Processing]
-    B --> C[Split Audio]
-    B --> D[Transcription Engine]
-    D --> E[Gemini API]
-    F[API Key Management] --> E
-    C --> D
-    D --> G[Result Processing]
+    A[Client/User] --> B[Demo UI Layer]
+    B --> C[Core Library]
+    C --> D[Transcriber]
+    C --> E[Aligner]
+    C --> F[Processor]
+    D --> G[Gemini API]
+    E --> H[Whisper Model]
+    F --> D
+    F --> E
+    I[API Key Management] --> G
+    J[Cache System] --> B
 ```
 
 ### Các thành phần cốt lõi
-1. **Audio Processing**: Xử lý và chuẩn bị file audio đầu vào
-2. **Split Audio**: Phân tích và cắt file âm thanh dài tại các khoảng lặng
-3. **Transcription Engine**: Sử dụng Gemini API để phiên âm nội dung
-4. **API Key Management**: Quản lý và luân chuyển API key khi cần thiết
-5. **Result Processing**: Xử lý kết quả trả về từ API
+1. **AudioTranscriber**: Xử lý phiên âm audio bằng Google Gemini API
+2. **TextAligner**: Alignment giữa text và audio sử dụng Stable Whisper
+3. **AudioProcessor**: Kết hợp cả transcription và alignment thành quy trình hoàn chỉnh
+4. **Demo UI**: Giao diện người dùng web dựa trên Streamlit
+5. **Cache System**: Hệ thống lưu cache kết quả xử lý để tối ưu hóa hiệu suất
 
 ## Mẫu thiết kế sử dụng
 
 ### 1. Module Pattern
-Hệ thống được chia thành các module riêng biệt, mỗi module đảm nhiệm một chức năng cụ thể:
-- `audio_understanding.py`: Xử lý transcription với Gemini API
-- `split_audio.py`: Cắt file audio dựa trên khoảng lặng
-- `api_key.py`: Quản lý API key
+Hệ thống được chia thành các module riêng biệt với trách nhiệm rõ ràng:
+- **Transcriber**: Phụ trách phiên âm và tương tác với Gemini API
+- **Aligner**: Phụ trách text-audio alignment
+- **Processor**: Kết hợp các module khác và điều phối luồng xử lý
+- **Demo UI**: Phụ trách giao diện người dùng và tương tác
 
-### 2. Adapter Pattern
-Sử dụng adapter pattern để tương tác với Gemini API, cho phép dễ dàng thay đổi hoặc mở rộng:
+### 2. Facade Pattern
+`AudioProcessor` hoạt động như facade, đơn giản hóa tương tác với các module con:
 ```python
-# Ví dụ adapter cho Gemini API
-def transcript_audios(files):
-    # Chuẩn bị dữ liệu
-    # Gọi API
-    # Xử lý kết quả
-    return result
+class AudioProcessor:
+    def __init__(self, api_key=None, transcription_model="gemini-2.0-flash", 
+                 whisper_model="large-v3", device="cpu"):
+        self.transcriber = AudioTranscriber(api_key, model=transcription_model)
+        self.aligner = TextAligner(model_name=whisper_model, device=device)
+    
+    def process_audio(self, audio_file, save_folder=None, ...):
+        # Xử lý transcription và alignment trong một quy trình hoàn chỉnh
+        ...
 ```
 
 ### 3. Strategy Pattern
 Cho phép lựa chọn thuật toán/chiến lược phù hợp khi cần:
-- Thay đổi API key khi bị rate limit
-- Lựa chọn phương pháp cắt audio phù hợp
+- Chọn giữa chỉ transcription hoặc transcription + alignment
+- Chọn thiết bị xử lý (CPU/GPU/MPS) cho alignment
+- Sử dụng các model khác nhau cho transcription
+
+### 4. Cache Pattern
+Sử dụng caching để tối ưu hóa hiệu suất trong ứng dụng demo:
+```python
+# Cache AudioProcessor instance
+@st.cache_resource
+def get_processor(api_key, transcription_model, whisper_model, device):
+    return AudioProcessor(api_key, transcription_model, whisper_model, device)
+```
 
 ## Quyết định kỹ thuật chính
 
-### 1. Lựa chọn công nghệ
-- **Google Gemini API**: Cung cấp khả năng phiên âm với độ chính xác cao và hiểu ngữ cảnh
-- **Python**: Ngôn ngữ chính cho backend, dễ phát triển và có nhiều thư viện hỗ trợ
-- **pydub**: Thư viện xử lý audio, hỗ trợ cắt và phân tích file âm thanh
-- **python-magic**: Xác định MIME type cho file
+### 1. Phân chia nhiệm vụ Transcription và Alignment
+- **Transcription**: Sử dụng Google Gemini API cho phiên âm và phân tích giọng nói
+- **Alignment**: Sử dụng Stable Whisper cho việc alignment text-audio
+- **Combined Approach**: Sử dụng AudioProcessor để tích hợp cả hai chức năng này
 
-### 2. Xử lý file âm thanh
-- Sử dụng chiến lược cắt file dựa trên khoảng lặng, tối ưu hóa việc xử lý file dài
-- Hỗ trợ nhiều format file âm thanh phổ biến
+### 2. Tổ chức code theo hướng thư viện và ứng dụng
+- **Thư viện cốt lõi**: audio_transcription/ chứa các module có thể tái sử dụng
+- **Ứng dụng demo**: demo/ chứa giao diện người dùng và use cases cụ thể
+- **Tách biệt concerns**: Xử lý audio tách biệt với giao diện người dùng
 
-### 3. Quản lý API key
-- Cơ chế luân chuyển API key khi bị rate limit
-- Lưu trữ API key an toàn
+### 3. Xử lý lỗi mạnh mẽ
+- Retry mechanism với exponential backoff
+- API key rotation khi gặp rate limit
+- Xử lý nhiều exception cases và logging chi tiết
+- Cache kết quả để giảm thiểu lỗi và tăng hiệu suất
 
-### 4. Định dạng dữ liệu
-- Sử dụng JSON để định dạng kết quả phiên âm, bao gồm nội dung và mô tả giọng nói
+### 4. Xử lý dữ liệu
+- Chuyển đổi audio từ stereo sang mono khi cần thiết
+- Hỗ trợ nhiều định dạng file (WAV, MP3)
+- Xử lý file data từ nhiều nguồn: path, BytesIO, bytes
+- Kết quả được định dạng JSON với cấu trúc rõ ràng
 
 ## Quan hệ giữa các thành phần
 
 ```mermaid
 classDiagram
+    class AudioTranscriber {
+        -api_key
+        -model
+        -client
+        -prompt
+        +__init__(api_key, model, custom_prompt)
+        +transcribe(file, max_retries)
+        -_get_api_key()
+        -_get_default_prompt()
+        -_parse_response()
+        -_get_normalized_mime_type()
+    }
+    
+    class TextAligner {
+        -model_name
+        -device
+        -model
+        +__init__(model_name, device)
+        +align_text(text, audio_file, save_folder)
+        -_load_model()
+        -_load_audio()
+    }
+    
     class AudioProcessor {
-        +process_file()
-        +get_mime_type()
+        -transcriber
+        -aligner
+        +__init__(api_key, models, device)
+        +process_audio(audio_file, save_folder)
+        +transcribe_only()
+        +align_only()
+        -_convert_to_mono()
+        -_extract_transcript_text()
+        -_combine_results()
+        +save_transcription_json()
     }
     
-    class AudioSplitter {
-        +split_by_silence()
-        +detect_silence()
-        +join_segments()
+    class WebUI {
+        +show_transcript_details()
+        +process_uploaded_audio()
+        +save_results()
     }
     
-    class TranscriptionEngine {
-        +transcript_audios()
-        +format_results()
+    class CacheSystem {
+        +generate_cache_key()
+        +clear_cache()
+        +update_settings()
     }
     
-    class APIKeyManager {
-        +get_active_key()
-        +rotate_key()
-        +handle_rate_limit()
-    }
-    
-    AudioProcessor --> AudioSplitter
-    AudioProcessor --> TranscriptionEngine
-    TranscriptionEngine --> APIKeyManager
+    AudioProcessor --> AudioTranscriber
+    AudioProcessor --> TextAligner
+    WebUI --> AudioProcessor
+    WebUI --> CacheSystem
 ```
 
 ## Mẫu tương tác
 
-### Luồng xử lý cơ bản
-1. Người dùng cung cấp file audio
-2. Hệ thống xác định định dạng và kích thước file
-3. Nếu file quá lớn, hệ thống sẽ cắt file tại các khoảng lặng
-4. Các phân đoạn được gửi tới Gemini API để phiên âm
-5. Kết quả được tổng hợp và trả về cho người dùng
+### Luồng xử lý transcription và alignment
+```mermaid
+sequenceDiagram
+    participant User
+    participant UI as Web UI
+    participant Proc as AudioProcessor
+    participant Trans as AudioTranscriber
+    participant Align as TextAligner
+    participant GeminiAPI
+    participant WhisperModel
+    
+    User->>UI: Upload audio file
+    UI->>Proc: process_audio()
+    Proc->>Proc: _convert_to_mono()
+    Proc->>Trans: transcribe()
+    Trans->>GeminiAPI: Generate content
+    GeminiAPI-->>Trans: Response with text
+    Trans-->>Proc: Transcription results
+    Proc->>Proc: _extract_transcript_text()
+    Proc->>Align: align_text()
+    Align->>WhisperModel: Align text with audio
+    WhisperModel-->>Align: Alignment results
+    Align-->>Proc: Audio chunks
+    Proc->>Proc: _combine_results()
+    Proc-->>UI: Final results
+    UI->>User: Display results
+```
 
-### Xử lý rate limit
-1. Hệ thống gặp lỗi rate limit từ API
-2. APIKeyManager kích hoạt và luân chuyển sang API key khác
-3. Yêu cầu được thử lại với API key mới
+### Xử lý cache
+1. Người dùng cung cấp file audio
+2. Hệ thống tạo cache key từ nội dung file và các tham số xử lý
+3. Kiểm tra nếu kết quả đã được lưu trong cache
+4. Nếu có, sử dụng kết quả cache; nếu không, xử lý file và lưu vào cache
+5. Hiển thị kết quả cho người dùng
+
+### Xử lý lỗi API
+1. Hệ thống gặp lỗi khi gọi API (rate limit, model overloaded, etc.)
+2. Retry mechanism kích hoạt với exponential backoff
+3. Nếu là rate limit error, có thể thay đổi API key
+4. Nếu là model overloaded, có thể thử với model không-lite
+5. Nếu vẫn thất bại sau max_retries, thông báo lỗi
 
 ## Kế hoạch mở rộng
-Kiến trúc hiện tại được thiết kế để dễ dàng mở rộng với:
-- Giao diện web (frontend)
-- Hệ thống quản lý người dùng
-- REST API
-- Triển khai microservice
+Kiến trúc hiện tại đã phát triển từ giai đoạn 1 sang giai đoạn 2 với giao diện người dùng web. Các kế hoạch mở rộng tiếp theo:
+
+### API Service
+```mermaid
+graph TD
+    A[Client] --> B[API Gateway]
+    B --> C[Authentication]
+    B --> D[Transcription Service]
+    B --> E[Alignment Service]
+    D --> F[Gemini API]
+    E --> G[Whisper Model]
+    H[DB] --> C
+    H --> D
+    H --> E
+```
+
+### Containerization
+```mermaid
+graph TD
+    A[Docker Compose] --> B[Web UI Container]
+    A --> C[API Container]
+    A --> D[Database Container]
+    B --> C
+    C --> D
+```
