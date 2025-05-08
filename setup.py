@@ -3,7 +3,7 @@ import re
 from setuptools import setup, find_packages
 
 # Đọc version từ file
-with open("audio_transcription/version.py", "r", encoding="utf-8") as f:
+with open("gemini_audio_transcription/version.py", "r", encoding="utf-8") as f:
     version_file = f.read()
     version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", version_file, re.M)
     version = version_match.group(1) if version_match else "0.0.0"
@@ -37,7 +37,7 @@ for req in requirements:
         core_requirements.append(req)
 
 setup(
-    name="audio_transcription",
+    name="gemini_audio_transcription",
     version=version,
     description="Audio transcription and alignment library using Google Gemini API for TTS labeling",
     long_description=long_description,
@@ -67,7 +67,7 @@ setup(
     },
     include_package_data=True,
     package_data={
-        "audio_transcription": ["*.md", "*.txt"],
+        "gemini_audio_transcription": ["*.md", "*.txt"],
     },
     keywords="audio, transcription, alignment, gemini, tts, whisper, stable-ts",
     project_urls={

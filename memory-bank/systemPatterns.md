@@ -1,7 +1,7 @@
 # Mẫu thiết kế hệ thống
 
 ## Kiến trúc hệ thống
-Dự án Audio Transcription sử dụng kiến trúc module với các thành phần rõ ràng, cho phép mở rộng và bảo trì dễ dàng. Hệ thống hiện tại gồm hai phần chính: thư viện cốt lõi (audio_transcription) và ứng dụng demo (demo).
+Dự án Audio Transcription sử dụng kiến trúc module với các thành phần rõ ràng, cho phép mở rộng và bảo trì dễ dàng. Hệ thống hiện tại gồm hai phần chính: thư viện cốt lõi (gemini_audio_transcription) và ứng dụng demo (demo).
 
 ### Kiến trúc tổng quan
 ```mermaid
@@ -72,7 +72,7 @@ def get_processor(api_key, transcription_model, whisper_model, device):
 - **Combined Approach**: Sử dụng AudioProcessor để tích hợp cả hai chức năng này
 
 ### 2. Tổ chức code theo hướng thư viện và ứng dụng
-- **Thư viện cốt lõi**: audio_transcription/ chứa các module có thể tái sử dụng
+- **Thư viện cốt lõi**: gemini_audio_transcription/ chứa các module có thể tái sử dụng
 - **Ứng dụng demo**: demo/ chứa giao diện người dùng và use cases cụ thể
 - **Tách biệt concerns**: Xử lý audio tách biệt với giao diện người dùng
 

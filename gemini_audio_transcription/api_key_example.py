@@ -24,7 +24,7 @@ API_KEY = "your-api-key-here"
 # import json
 # import os
 #
-# CONFIG_PATH = os.path.expanduser("~/.config/audio_transcription/config.json")
+# CONFIG_PATH = os.path.expanduser("~/.config/gemini_audio_transcription/config.json")
 #
 # try:
 #     with open(CONFIG_PATH, "r", encoding="utf-8") as f:

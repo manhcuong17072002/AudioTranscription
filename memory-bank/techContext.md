@@ -56,7 +56,7 @@
 ### Cấu trúc mã nguồn
 ```
 /AudioTranscription/
-  ├── audio_transcription/     # Thư viện chính
+  ├── gemini_audio_transcription/     # Thư viện chính
   │   ├── __init__.py
   │   ├── transcriber.py       # Xử lý transcription với Gemini API
   │   ├── processor.py         # Kết hợp transcription và alignment

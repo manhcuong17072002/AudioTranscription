@@ -83,6 +83,6 @@ Dự án đang chuyển từ **Giai đoạn 1 sang Giai đoạn 2**. Thư viện
 4. Thêm các unit test và documentation chi tiết
 
 ## Định hướng phát triển
-Dự án đã hoàn thành bước chuyển từ thư viện thuần túy sang ứng dụng có giao diện người dùng. Hệ thống hiện tại cung cấp một platform hoạt động tốt cho cả hai use case: sử dụng như một thư viện Python (import audio_transcription) hoặc như một ứng dụng web (streamlit run demo/Homepage.py). 
+Dự án đã hoàn thành bước chuyển từ thư viện thuần túy sang ứng dụng có giao diện người dùng. Hệ thống hiện tại cung cấp một platform hoạt động tốt cho cả hai use case: sử dụng như một thư viện Python (import gemini_audio_transcription) hoặc như một ứng dụng web (streamlit run demo/Homepage.py). 
 
 Định hướng tiếp theo sẽ là cải thiện chất lượng, hiệu suất và trải nghiệm người dùng, sau đó chuyển sang xây dựng REST API và triển khai production version với khả năng scale.

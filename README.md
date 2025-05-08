@@ -20,7 +20,7 @@ Audio Transcription is a powerful Python library that leverages Google Gemini AP
 ### Installation
 
 ```bash
-pip install audio-transcription
+pip install gemini-audio-transcription
 ```
 
 ### Prerequisites
@@ -32,7 +32,7 @@ This library requires a Google Gemini API key. You can obtain one from [Google A
 #### Simple Transcription
 
 ```python
-from audio_transcription import AudioTranscriber
+from gemini_audio_transcription import AudioTranscriber
 
 # Initialize with API key
 transcriber = AudioTranscriber(api_key="your-api-key")
@@ -46,7 +46,7 @@ print(results)
 #### Complete Audio Processing
 
 ```python
-from audio_transcription import AudioProcessor
+from gemini_audio_transcription import AudioProcessor
 
 # Initialize with options
 processor = AudioProcessor(
@@ -74,7 +74,7 @@ processor.save_transcription_json(results, "output_dir/results.json")
 If you already have the transcript and just want to align it with audio:
 
 ```python
-from audio_transcription import TextAligner
+from gemini_audio_transcription import TextAligner
 
 aligner = TextAligner(
     model_name="large-v3",
@@ -131,7 +131,7 @@ The Voice Description feature is particularly valuable for modern TTS systems th
 You can customize this prompt by providing your own when initializing the transcriber:
 
 ```python
-from audio_transcription import AudioTranscriber
+from gemini_audio_transcription import AudioTranscriber
 
 custom_prompt = """
 Your custom prompt here...

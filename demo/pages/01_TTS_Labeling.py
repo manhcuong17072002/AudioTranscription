@@ -34,8 +34,8 @@ from demo.utils.cache_utils import (
 from demo.utils.display_utils import show_transcript_details
 from demo.utils.custom_styles import load_css
 
-# Import from audio_transcription library
-from audio_transcription import AudioTranscriber, AudioProcessor
+# Import from gemini_audio_transcription library
+from gemini_audio_transcription import AudioTranscriber, AudioProcessor
 
 
 # Create cached functions to avoid reinitializing processor/transcriber unnecessarily

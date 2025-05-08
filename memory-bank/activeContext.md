@@ -19,7 +19,7 @@ Dự án hiện đang chuyển từ giai đoạn 1 sang giai đoạn 2 với cá
    - Kiểm soát tối ưu khi cắt audio
 
 ## Thay đổi gần đây
-1. **Cấu trúc dự án**: Tái tổ chức thành thư viện chính (audio_transcription) và ứng dụng demo (demo/)
+1. **Cấu trúc dự án**: Tái tổ chức thành thư viện chính (gemini_audio_transcription) và ứng dụng demo (demo/)
 2. **Triển khai các module chính**:
    - transcriber.py: Xử lý phiên âm audio sử dụng Gemini API
    - aligner.py: Alignment text-audio sử dụng Stable Whisper

@@ -16,7 +16,7 @@
 - Các file trong demo folder có thể sử dụng tiếng Việt trong giao diện người dùng
 
 ## Cấu trúc thư mục
-- audio_transcription/: Thư viện chính
+- gemini_audio_transcription/: Thư viện chính
 - demo/: Ứng dụng demo với Streamlit
 - demo/pages/: Các trang phụ của ứng dụng Streamlit
 - demo/utils/: Các tiện ích cho ứng dụng demo
